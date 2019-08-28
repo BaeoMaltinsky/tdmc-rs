@@ -11,3 +11,7 @@ rand = "0.7.0"
 im-rc = "13.0.0"
 lazy_static = "1.4.0"
 rand_distr = "0.2.1"
+rand_xorshift = "0.2.0"
+
+[profile.release]
+debug = true
