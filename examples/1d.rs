@@ -49,7 +49,7 @@ fn main() {
     }
     println!();
 
-    let n_replicates = 10_000;
+    let n_replicates = 100_000;
     let n_timesteps = (1. / TIMESTEP) as i32;
 
     let end_walker_data = Brownian::run_tdmc(0.0, n_timesteps, n_replicates);

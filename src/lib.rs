@@ -11,7 +11,7 @@ pub fn get_rng() -> XorShiftRng {
 }
 
 struct Walkers<T: Clone + Send> {
-    n_dynamics_evaluations: i32,
+    n_dynamics_evaluations: u64,
     walker_data: Vec<WalkerData<T>>,
 }
 
@@ -31,7 +31,7 @@ pub trait TDMC: Sized + Send + Sync {
 
         // Initialize clock.
         let start_clock = Instant::now();
-        let mut n_dynamics_evaluations = 0;
+        let mut n_dynamics_evaluations = 0u64;
 
         // Initialize RNG.
         let mut rng = get_rng();
