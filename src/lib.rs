@@ -34,7 +34,7 @@ impl<T: Clone + Send> Walkers<T> {
 pub trait TDMC {
     type State: Clone + Send;
 
-    fn propagate_sample(state: &mut Self::State, timestamp: u32);
+    fn propagate_sample(state: &mut Self::State, timestamp: u32, rng: &mut XorShiftRng);
 
     fn chi(new: &Self::State, old: &Self::State, timestamp: u32) -> f64;
 
@@ -74,7 +74,7 @@ pub trait TDMC {
                     // Calculate a new state, saving the old & new outside the
                     // list for just a moment.
                     let previous_state = replicates.data[j].state.clone();
-                    Self::propagate_sample(&mut replicates.data[j].state, i);
+                    Self::propagate_sample(&mut replicates.data[j].state, i, rng);
                     replicates.n_dynamics_evaluations += 1;
 
                     // Calculate the generalized DMC weight for the proposed step.

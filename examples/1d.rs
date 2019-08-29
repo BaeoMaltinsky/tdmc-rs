@@ -1,6 +1,7 @@
 use lazy_static::*;
 use rand::distributions::Distribution;
 use rand_distr::Normal;
+use rand_xorshift::XorShiftRng;
 use tdmc::*;
 
 const TIMESTEP: f64 = 0.0001;
@@ -16,7 +17,7 @@ impl TDMC for Drift {
     type State = f64;
 
     #[inline]
-    fn propagate_sample(x: &mut Self::State, _: u32) {
+    fn propagate_sample(x: &mut Self::State, _: u32, _: &mut XorShiftRng) {
         *x += 0.1;
     }
 
@@ -32,12 +33,12 @@ impl TDMC for Brownian {
     type State = f64;
 
     #[inline]
-    fn propagate_sample(state: &mut Self::State, _: u32) {
+    fn propagate_sample(state: &mut Self::State, _: u32, rng: &mut XorShiftRng) {
         lazy_static! {
             static ref BROWNIAN_INCREMENT: Normal<f64> =
                 Normal::new(0.0, (2.0 * TIMESTEP).sqrt()).unwrap();
         }
-        *state += (*BROWNIAN_INCREMENT).sample(&mut rand::thread_rng());
+        *state += (*BROWNIAN_INCREMENT).sample(rng);
     }
 
     #[inline]
@@ -53,7 +54,7 @@ fn main() {
     }
     println!();
 
-    let n_replicates = 10_000;
+    let n_replicates = 100_000;
     let n_timesteps = (1. / TIMESTEP) as u32;
 
     let end_walker_data = Brownian::run_tdmc(0.0, n_timesteps, n_replicates);
