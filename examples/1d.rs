@@ -15,10 +15,12 @@ struct Drift {}
 impl TDMC for Drift {
     type State = f64;
 
+    #[inline]
     fn propagate_sample(x: &mut Self::State, _: u32) {
         *x += 0.1;
     }
 
+    #[inline]
     fn chi(x_new: &Self::State, x_old: &Self::State, _: u32) -> f64 {
         dmc_chi(*x_new, *x_old)
     }
@@ -29,16 +31,18 @@ struct Brownian {}
 impl TDMC for Brownian {
     type State = f64;
 
-    fn propagate_sample(x: &mut Self::State, _: u32) {
+    #[inline]
+    fn propagate_sample(state: &mut Self::State, _: u32) {
         lazy_static! {
             static ref BROWNIAN_INCREMENT: Normal<f64> =
                 Normal::new(0.0, (2.0 * TIMESTEP).sqrt()).unwrap();
         }
-        *x += (*BROWNIAN_INCREMENT).sample(&mut rand::thread_rng());
+        *state += (*BROWNIAN_INCREMENT).sample(&mut rand::thread_rng());
     }
 
-    fn chi(x_new: &Self::State, x_old: &Self::State, _: u32) -> f64 {
-        dmc_chi(*x_new, *x_old)
+    #[inline]
+    fn chi(state_new: &Self::State, state_old: &Self::State, _: u32) -> f64 {
+        dmc_chi(*state_new, *state_old)
     }
 }
 
@@ -49,7 +53,7 @@ fn main() {
     }
     println!();
 
-    let n_replicates = 100_000;
+    let n_replicates = 10_000;
     let n_timesteps = (1. / TIMESTEP) as u32;
 
     let end_walker_data = Brownian::run_tdmc(0.0, n_timesteps, n_replicates);
