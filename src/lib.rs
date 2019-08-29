@@ -12,21 +12,30 @@ pub fn get_rng() -> XorShiftRng {
 
 struct Walkers<T: Clone + Send> {
     n_dynamics_evaluations: u64,
-    walker_data: Vec<WalkerData<T>>,
+    data: Vec<WalkerData<T>>,
 }
 
-pub trait TDMC: Sized + Send + Sync {
+impl<T: Clone + Send> Walkers<T> {
+    fn new(state: T, ticket: f64, replicate_id: u32) -> Self {
+        Walkers {
+            data: vec![WalkerData::new(state, ticket, replicate_id)],
+            n_dynamics_evaluations: 0,
+        }
+    }
+}
+
+pub trait TDMC {
     type State: Clone + Send;
 
-    fn propagate_sample(state: &mut Self::State, timestamp: i32);
+    fn propagate_sample(state: &mut Self::State, timestamp: u32);
 
-    fn chi(new: &Self::State, old: &Self::State, timestamp: i32) -> f64;
+    fn chi(new: &Self::State, old: &Self::State, timestamp: u32) -> f64;
 
     fn run_tdmc(
         initial_walker_state: Self::State,
-        n_dmc_steps: i32,
-        n_initial_walkers: i32,
-    ) -> Vec<(Self::State, i32)> {
+        n_dmc_steps: u32,
+        n_initial_walkers: u32,
+    ) -> Vec<(Self::State, u32)> {
         println!("Beginning TDMC.");
 
         // Initialize clock.
@@ -40,13 +49,8 @@ pub trait TDMC: Sized + Send + Sync {
         // Create a list of walkers with uniformly distributed tickets.
         let mut walker_list: Vec<Walkers<Self::State>> = (0..n_initial_walkers)
             .zip((&uniform).sample_iter(&mut rng))
-            .map(|(replicate_id, ticket)| Walkers {
-                n_dynamics_evaluations: 0,
-                walker_data: vec![WalkerData {
-                    state: initial_walker_state.clone(),
-                    ticket,
-                    replicate_id,
-                }],
+            .map(|(replicate_id, ticket)| {
+                Walkers::new(initial_walker_state.clone(), ticket, replicate_id)
             })
             .collect();
 
@@ -56,68 +60,64 @@ pub trait TDMC: Sized + Send + Sync {
             // Iterate over all walkers starting from the first.
             walker_list.par_iter_mut().for_each(|replicates| {
                 let mut rng = get_rng();
+                let mut pending = Vec::new();
 
                 let mut j = 0;
-                while j < replicates.walker_data.len() {
+                while j < replicates.data.len() {
                     // Calculate a new state, saving the old & new outside the
                     // list for just a moment.
-                    let previous_state = replicates.walker_data[j].state.clone();
-                    Self::propagate_sample(&mut replicates.walker_data[j].state, i);
+                    let previous_state = replicates.data[j].state.clone();
+                    Self::propagate_sample(&mut replicates.data[j].state, i);
                     replicates.n_dynamics_evaluations += 1;
 
                     // Calculate the generalized DMC weight for the proposed step.
                     let step_weight =
-                        (-Self::chi(&replicates.walker_data[j].state, &previous_state, i)).exp();
+                        (-Self::chi(&replicates.data[j].state, &previous_state, i)).exp();
 
                     // If the weight is lower than the walker's ticket, delete the walker
                     // and advance to the next.
-                    if step_weight < replicates.walker_data[j].ticket {
+                    if step_weight < replicates.data[j].ticket {
                         // TODO this is unnecessary, should just be an option
-                        replicates.walker_data.remove(j);
+                        replicates.data.remove(j);
                     } else {
-                        //                    dbg!(step_weight);
-                        let replicate_id = replicates.walker_data[j].replicate_id;
+                        let replicate_id = replicates.data[j].replicate_id;
                         let n_clones_needed =
-                            1.max((step_weight + uniform.sample(&mut rng)) as i32);
+                            1.max((step_weight + uniform.sample(&mut rng)) as u32);
 
-                        replicates.walker_data[j].ticket /= step_weight;
+                        replicates.data[j].ticket /= step_weight;
 
                         for _ in 1..n_clones_needed {
                             let new_ticket_dist = Uniform::new_inclusive(1.0 / step_weight, 1.0);
                             let cloned_walker = WalkerData {
-                                state: replicates.walker_data[j].state.clone(),
+                                state: replicates.data[j].state.clone(),
                                 ticket: new_ticket_dist.sample(&mut rng),
                                 replicate_id,
                             };
 
-                            j += 1;
-                            replicates.walker_data.push(cloned_walker);
+                            pending.push(cloned_walker);
                         }
-                        j += 1
                     }
+                    j += 1;
                 }
+                replicates.data.extend(pending);
             });
         }
 
         let res = walker_list
             .into_iter()
             .map(|replicates| {
+                // aggregate evaluation counts
                 n_dynamics_evaluations += replicates.n_dynamics_evaluations;
-                replicates.walker_data.into_iter().map(|walker| {
-                    let WalkerData {
-                        state,
-                        replicate_id,
-                        ..
-                    } = walker;
 
-                    (state, replicate_id)
-                })
+                // convert
+                replicates.data.into_iter().map(|walker| walker.into_pair())
             })
             .flatten()
             .collect();
+
         println!(
-            "Completed TDMC in {} milliseconds using {} evaluations of sampling dynamics.",
-            (Instant::now() - start_clock).as_millis(),
+            "Completed TDMC in {} seconds using {} evaluations of sampling dynamics.",
+            (Instant::now() - start_clock).as_micros() / 1_000_000,
             n_dynamics_evaluations
         );
         res
@@ -128,5 +128,24 @@ pub trait TDMC: Sized + Send + Sync {
 pub struct WalkerData<T: Clone + Send> {
     state: T,
     ticket: f64,
-    replicate_id: i32,
+    replicate_id: u32,
+}
+
+impl<T: Clone + Send> WalkerData<T> {
+    fn new(state: T, ticket: f64, replicate_id: u32) -> Self {
+        WalkerData {
+            state,
+            ticket,
+            replicate_id,
+        }
+    }
+
+    fn into_pair(self) -> (T, u32) {
+        let WalkerData {
+            state,
+            replicate_id,
+            ..
+        } = self;
+        (state, replicate_id)
+    }
 }
