@@ -17,4 +17,5 @@ ord_subset = "3.1.1"
 itertools = "0.8.0"
 
 [profile.release]
-lto = true
+debug = true
+# lto = true
