@@ -61,11 +61,11 @@ pub trait TDMC {
             })
             .collect();
 
-        // Perform ticketed DMC sampling for n_dmc_steps steps.
-        for i in 0..n_dmc_steps {
+        walker_list.par_iter_mut().for_each(|replicates| {
+            // Perform ticketed DMC sampling for n_dmc_steps steps.
             // At every step, advance and adjust the copy number of each walker.
-            // Iterate over all walkers starting from the first.
-            walker_list.par_iter_mut().for_each(|replicates| {
+            for i in 0..n_dmc_steps {
+                // Iterate over all walkers starting from the first.
                 let rng = &mut replicates.rng;
                 let mut pending = Vec::new();
 
@@ -106,8 +106,8 @@ pub trait TDMC {
                     j += 1;
                 }
                 replicates.data.extend(pending);
-            });
-        }
+            }
+        });
 
         let res = walker_list
             .into_iter()

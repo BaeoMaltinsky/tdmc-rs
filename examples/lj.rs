@@ -271,11 +271,11 @@ fn calc_lj_force(x: &LjStateVec) -> LjStateVec {
             });
 
             // Use the displacement and distance to calculate forces.
-            dimension_range().for_each(|k| {
+            dimension_range().zip(disp.iter()).for_each(|(k, disp_k)| {
                 force[DIMENSION * i + k] +=
-                    (48.0 * dist_sq.powi(-7) - 24.0 * dist_sq.powi(-4)) * disp[k];
+                    (48.0 * dist_sq.powi(-7) - 24.0 * dist_sq.powi(-4)) * disp_k;
                 force[DIMENSION * j + k] +=
-                    (48.0 * dist_sq.powi(-7) - 24.0 * dist_sq.powi(-4)) * -disp[k];
+                    (48.0 * dist_sq.powi(-7) - 24.0 * dist_sq.powi(-4)) * -disp_k;
             });
         })
     });
