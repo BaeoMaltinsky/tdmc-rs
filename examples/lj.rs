@@ -200,36 +200,31 @@ fn main() {
     println!(
         "Final estimate for E[1]: {}, variance {}",
         one_estimator_sum / n_runs,
-        (one_estimator_sumsq / n_runs
-            - (one_estimator_sum / n_runs) * (one_estimator_sum / n_runs))
+        (one_estimator_sumsq / n_runs - (one_estimator_sum / n_runs).powi(2))
     );
 
     println!(
         "Final estimate for E[I_B]: {}, variance {}",
         i_b_estimator_sum / n_runs,
-        (i_b_estimator_sumsq / n_runs
-            - (i_b_estimator_sum / n_runs) * (i_b_estimator_sum / n_runs))
+        (i_b_estimator_sumsq / n_runs - (i_b_estimator_sum / n_runs).powi(2))
     );
 
     println!(
         "Final estimate for E[bf_I_B]: {}, variance {}",
         bf_i_b_estimator_sum / n_runs,
-        (bf_i_b_estimator_sum / n_runs
-            - (bf_i_b_estimator_sum / n_runs) * (bf_i_b_estimator_sum / n_runs))
+        (bf_i_b_estimator_sum / n_runs - (bf_i_b_estimator_sum / n_runs).powi(2))
     );
 
     println!(
         "Final estimate for E[I_D]: {}, variance {}",
         i_d_estimator_sum / n_runs,
-        (i_d_estimator_sumsq / n_runs
-            - (i_d_estimator_sum / n_runs) * (i_d_estimator_sum / n_runs))
+        (i_d_estimator_sumsq / n_runs - (i_d_estimator_sum / n_runs).powi(2))
     );
 
     println!(
         "Final estimate for E[bf_I_D]: {}, variance {}",
         bf_i_d_estimator_sum / n_runs,
-        (bf_i_d_estimator_sum / n_runs
-            - (bf_i_d_estimator_sum / n_runs) * (bf_i_d_estimator_sum / n_runs))
+        (bf_i_d_estimator_sum / n_runs - (bf_i_d_estimator_sum / n_runs).powi(2))
     );
 }
 
